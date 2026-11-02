@@ -31,11 +31,26 @@ jobs:
     runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
-      - run: brew install create-dmg
       - name: Build DMG
         run: |
-          [[ "$GITHUB_REF" == refs/tags/v* ]] && export VERSION="${GITHUB_REF_NAME#v}"
-          Scripts/make-dmg.sh
+          [[ "$GITHUB_REF" == refs/tags/v* ]] && version_arg="MARKETING_VERSION=${GITHUB_REF_NAME#v}"
+          xcodebuild build -project video-converter.xcodeproj -scheme video-converter -configuration Release \
+            -derivedDataPath build/DerivedData -destination 'generic/platform=macOS' \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM="" ${version_arg:-}
+          app=build/DerivedData/Build/Products/Release/video-converter.app
+          codesign --verify --deep --strict "$app"
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist")
+          rm -rf build/dmg && mkdir -p build/dmg && ditto "$app" build/dmg/video-converter.app
+          ln -s /Applications build/dmg/Applications
+          dmg="build/VideoConverter-$version.dmg"
+          hdiutil create -volname "Video Converter" -srcfolder build/dmg -format UDZO -ov "$dmg"
+          hdiutil verify "$dmg"
+          # Smoke test: the app inside the mounted image is intact and still signed.
+          mnt=$(mktemp -d)
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt"
+          codesign --verify --deep --strict "$mnt/video-converter.app"
+          test -L "$mnt/Applications"
+          hdiutil detach "$mnt"
       - uses: actions/upload-artifact@v4
         with:
           name: dmg
