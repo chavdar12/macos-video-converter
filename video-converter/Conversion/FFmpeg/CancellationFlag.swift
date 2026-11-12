@@ -4,11 +4,12 @@
 //
 
 import Foundation
-import Synchronization
+import os
 
 /// Set from any thread to stop a running conversion.
 nonisolated final class CancellationFlag: Sendable {
-    private let state = Mutex(false)
+    // OSAllocatedUnfairLock rather than Mutex, which needs macOS 15.
+    private let state = OSAllocatedUnfairLock(initialState: false)
 
     var isCancelled: Bool { state.withLock { $0 } }
 
