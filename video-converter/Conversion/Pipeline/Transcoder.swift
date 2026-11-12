@@ -155,16 +155,19 @@ nonisolated final class Transcoder {
     private func addSubtitleTracks(info: MediaInfo, sidecar: URL?, muxer: Muxer) throws {
         var outputs: [UnsafeMutablePointer<AVStream>] = []
         if let sidecar {
-            let sidecarInput = try FFmpeg.openInput(sidecar)
+            let unreadable = ConversionError.ffmpegFailed("The subtitle file \(sidecar.lastPathComponent) couldn't be read.")
+            guard let sidecarInput = try? FFmpeg.openInput(sidecar) else { throw unreadable }
             self.sidecarInput = sidecarInput
-            if sidecarInput.pointee.nb_streams > 0 {
-                let stream = FFmpeg.stream(sidecarInput, 0)
-                let handler: OutputHandler = format.isMatroska
-                    ? try StreamCopier(stream: stream, muxer: muxer, startsAtZero: true)
-                    : try SubtitleTranscoder(stream: stream, muxer: muxer, encoder: "mov_text", startsAtZero: true)
-                sidecarHandler = handler
-                outputs.append(handler.output)
+            // Every packet in the file goes to this one handler, so it must hold a single subtitle stream.
+            guard sidecarInput.pointee.nb_streams == 1, MediaInfo(context: sidecarInput).streams.first?.kind == .subtitle else {
+                throw unreadable
             }
+            let stream = FFmpeg.stream(sidecarInput, 0)
+            let handler: OutputHandler = format.isMatroska
+                ? try StreamCopier(stream: stream, muxer: muxer, startsAtZero: true)
+                : try SubtitleTranscoder(stream: stream, muxer: muxer, encoder: "mov_text", startsAtZero: true)
+            sidecarHandler = handler
+            outputs.append(handler.output)
         }
         for subtitle in info.subtitleStreams where format.isMatroska || subtitle.isTextSubtitle {
             let stream = FFmpeg.stream(input, subtitle.index)

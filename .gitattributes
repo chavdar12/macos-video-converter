@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Test media: never diff or normalize line endings.
+*.mp4 binary
+*.mkv binary
+*.mts binary
+*.m4a binary
+*.svg text
+
+*.swift diff=swift

@@ -52,6 +52,8 @@ nonisolated final class BitmapSubtitleReader: PacketHandler {
                   let pixels = rect.data.0, let palette = rect.data.1
             else { continue }
             let linesize = Int(rect.linesize.0)
+            // Damaged files can report sizes that would read past the pixel data.
+            guard rect.w > 0, rect.h > 0, linesize >= Int(rect.w) else { continue }
             rects.append(BitmapSubtitle.Rect(
                 x: Int(rect.x), y: Int(rect.y), width: Int(rect.w), height: Int(rect.h), linesize: linesize,
                 pixels: Array(UnsafeBufferPointer(start: pixels, count: linesize * Int(rect.h))),
