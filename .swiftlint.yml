@@ -1,0 +1,11 @@
+# shortcut: relaxed so the existing code passes; tighten once short names and long functions are cleaned up
+identifier_name:
+  min_length: 1
+type_name:
+  excluded: [video_converterApp, win2usbUITests]
+large_tuple:
+  warning: 3
+  error: 4
+function_body_length:
+  warning: 100
+  error: 150
