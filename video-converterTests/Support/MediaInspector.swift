@@ -83,6 +83,36 @@ enum MediaInspector {
     /// The share of bright pixels in the bottom half of the first frame at or after `seconds`.
     /// The fixtures are flat and dark, so anything bright there is burned-in subtitle text.
     static func brightPixelFraction(in url: URL, at seconds: Double) throws -> Double {
+        try measureFrame(in: url, at: seconds, brightFraction)
+    }
+
+    /// How much more neighbouring rows differ than rows two apart, in the first frame at or after `seconds`.
+    /// Interlaced motion shows as combing, where neighbouring rows (different fields) differ most,
+    /// so this is well above 1; in a progressive picture it's about 1 or less. 8-bit only.
+    static func combing(in url: URL, at seconds: Double) throws -> Double {
+        try measureFrame(in: url, at: seconds) { frame in
+            guard let luma = frame.pointee.data.0,
+                  av_pix_fmt_desc_get(AVPixelFormat(rawValue: frame.pointee.format))?.pointee.comp.0.depth == 8
+            else { throw InspectionError.unsupportedPixelFormat(FFmpeg.string(av_get_pix_fmt_name(AVPixelFormat(rawValue: frame.pointee.format)))) }
+            let width = Int(frame.pointee.width), height = Int(frame.pointee.height)
+            let stride = Int(frame.pointee.linesize.0)
+            var adjacent = 0, sameField = 0
+            for y in 0 ..< height - 2 {
+                for x in 0 ..< width {
+                    let row = Int(luma[y * stride + x])
+                    adjacent += abs(row - Int(luma[(y + 1) * stride + x]))
+                    sameField += abs(row - Int(luma[(y + 2) * stride + x]))
+                }
+            }
+            return Double(adjacent) / Double(max(sameField, 1))
+        }
+    }
+
+    private static func measureFrame(
+        in url: URL,
+        at seconds: Double,
+        _ measure: (UnsafeMutablePointer<AVFrame>) throws -> Double
+    ) throws -> Double {
         let input = try FFmpeg.openInput(url)
         defer { FFmpeg.closeInput(input) }
         guard let video = MediaInfo(context: input).video else { throw InspectionError.noVideo }
@@ -99,7 +129,7 @@ enum MediaInspector {
             while avcodec_receive_frame(decoder, frame) >= 0 {
                 defer { av_frame_unref(frame) }
                 if Double(frame.pointee.best_effort_timestamp) * timeBase + 0.001 >= seconds {
-                    return try brightFraction(of: frame)
+                    return try measure(frame)
                 }
             }
             return nil
@@ -117,7 +147,7 @@ enum MediaInspector {
     }
 
     /// Works on 8-bit and high-bit-depth (e.g. 10-bit HEVC) planar YUV.
-    private static func brightFraction(of frame: UnsafeMutablePointer<AVFrame>) throws -> Double {
+    private static func brightFraction(_ frame: UnsafeMutablePointer<AVFrame>) throws -> Double {
         let format = AVPixelFormat(rawValue: frame.pointee.format)
         guard let descriptor = av_pix_fmt_desc_get(format), let luma = frame.pointee.data.0 else {
             throw InspectionError.unsupportedPixelFormat(FFmpeg.string(av_get_pix_fmt_name(format)))
