@@ -59,6 +59,17 @@ struct ConversionTests {
         #expect(abs(report.duration - 2) < 0.1)
     }
 
+    /// Re-encoding without deinterlacing shows the two fields as combing wherever there's motion.
+    @Test(arguments: [SubtitleMode.remove, .burnIn])
+    func interlacedVideoIsDeinterlaced(_ mode: SubtitleMode) async throws {
+        let source = try Fixture.interlaced.url
+        #expect(try MediaInspector.combing(in: source, at: 1) > 1.5, "The fixture should show combing")
+        let result = try await TestConversion.run(.interlaced, sidecar: .sidecar, to: .mp4HEVC, subtitles: mode, in: directory)
+        let combing = try MediaInspector.combing(in: result.output, at: 1)
+        #expect(combing < 1.1)
+        #expect(abs(try MediaInspector.inspect(result.output).duration - 2) < 0.1)
+    }
+
     struct AudioCase: Sendable, CustomTestStringConvertible {
         let fixture: Fixture
         let sampleRate: Int32

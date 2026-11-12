@@ -30,6 +30,9 @@ nonisolated final class VideoTranscoder: OutputHandler {
     private let filterShift: Int64
     /// The source's rotation, carried over so players keep showing it upright.
     private let displayMatrix: [UInt8]?
+    /// Interlaced sources are deinterlaced, as the output is progressive and players
+    /// would otherwise show combing wherever there's motion.
+    private var deinterlace: Bool
 
     private let decoder: UnsafeMutablePointer<AVCodecContext>
     private let encoderCodec: UnsafePointer<AVCodec>
@@ -72,6 +75,7 @@ nonisolated final class VideoTranscoder: OutputHandler {
             filterShift = 0
         }
         let parameters = stream.pointee.codecpar.pointee
+        deinterlace = parameters.field_order != AV_FIELD_PROGRESSIVE && parameters.field_order != AV_FIELD_UNKNOWN
         if let matrix = av_packet_side_data_get(parameters.coded_side_data, parameters.nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX) {
             displayMatrix = Array(UnsafeBufferPointer(start: matrix.pointee.data, count: matrix.pointee.size))
         } else {
@@ -143,7 +147,10 @@ nonisolated final class VideoTranscoder: OutputHandler {
     private func process(_ frame: UnsafeMutablePointer<AVFrame>) throws {
         frame.pointee.pts = frame.pointee.best_effort_timestamp
         let isHardwareFrame = frame.pointee.format == AV_PIX_FMT_VIDEOTOOLBOX.rawValue
-        if case .off = burnIn, isHardwareFrame, graph == nil {
+        // Containers don't always flag interlacing, so the first frame decides too. Later frames
+        // can't switch paths: the encoder is already set up for one or the other.
+        if encoder == nil, graph == nil, frame.pointee.flags & AV_FRAME_FLAG_INTERLACED != 0 { deinterlace = true }
+        if case .off = burnIn, !deinterlace, isHardwareFrame, graph == nil {
             // Nothing to draw: the frame goes straight from the decoder to the encoder without leaving the media engine.
             try encode(frame, timeBase: timeBase, startsAtZero: false)
             return
@@ -167,7 +174,7 @@ nonisolated final class VideoTranscoder: OutputHandler {
         try drainFilters()
     }
 
-    /// buffer → [subtitles | overlay] → format (what the encoder accepts) → buffersink
+    /// buffer → [bwdif] → [subtitles | overlay] → format (what the encoder accepts) → buffersink
     private func makeGraph(for frame: UnsafeMutablePointer<AVFrame>) throws {
         guard let graph = avfilter_graph_alloc() else { throw ConversionError.ffmpegFailed("Out of memory.") }
         self.graph = graph
@@ -182,6 +189,14 @@ nonisolated final class VideoTranscoder: OutputHandler {
             parameters.pointee.color_range = frame.pointee.color_range
         }
         var last = source
+
+        if deinterlace {
+            // Before the subtitles so they stay sharp. One frame per frame keeps the source's frame rate;
+            // `interlaced` leaves frames flagged progressive untouched.
+            let bwdif = try FFmpeg.addFilter("bwdif", to: graph, options: [("mode", "send_frame"), ("deint", "interlaced")])
+            try FFmpeg.link(last, to: bwdif)
+            last = bwdif
+        }
 
         switch burnIn {
         case .off:

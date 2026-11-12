@@ -31,7 +31,7 @@ struct BundledFFmpegTests {
         #expect(avcodec_find_decoder(descriptor.pointee.id) != nil)
     }
 
-    @Test(arguments: ["buffer", "buffersink", "abuffer", "abuffersink", "subtitles", "overlay", "format", "aformat", "scale", "aresample"])
+    @Test(arguments: ["buffer", "buffersink", "abuffer", "abuffersink", "subtitles", "overlay", "format", "aformat", "scale", "aresample", "bwdif"])
     func filterIsAvailable(_ name: String) {
         #expect(avfilter_get_by_name(name) != nil)
     }

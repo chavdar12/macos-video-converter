@@ -17,6 +17,8 @@ enum Fixture: String, CaseIterable, CustomTestStringConvertible {
     case hevc10TwoSRT = "hevc10-ac3-2srt.mkv"
     /// H.264 and MP2 in MPEG-TS, which starts at about 1.4 s instead of 0.
     case transportStream = "h264-mp2.mts"
+    /// Interlaced (top field first) H.264 of a fast-moving, detailed picture; no audio or subtitles.
+    case interlaced = "h264-interlaced.mp4"
     /// VP8 (no hardware decoding) and 5.1 Opus.
     case vp8Opus51 = "vp8-opus51.mkv"
     /// AAC only, no video.

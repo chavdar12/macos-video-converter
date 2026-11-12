@@ -8,7 +8,7 @@ A macOS app that converts videos with the bundled FFmpeg libraries and VideoTool
 
 ## Requirements
 
-- macOS 27 or later
+- macOS 14 Sonoma or later
 - Xcode 27 to build
 
 ## Building
