@@ -29,6 +29,14 @@ struct ConversionFailureTests {
         guard case .noMediaTracks? = error else { Issue.record("Got \(String(describing: error))"); return }
     }
 
+    @Test(arguments: [Fixture.audioOnly, .notMedia])
+    func sidecarThatIsNotSubtitlesIsRejected(sidecar: Fixture) async throws {
+        let error = await #expect(throws: ConversionError.self) {
+            try await TestConversion.run(.h264MovText, sidecar: sidecar, to: .mkvH264, subtitles: .keepTrack, in: directory)
+        }
+        #expect(error?.errorDescription?.contains("subtitle file") == true)
+    }
+
     @Test func errorsHaveReadableDescriptions() {
         #expect(ConversionError.unreadable.errorDescription == "The file couldn't be read.")
         #expect(ConversionError.noMediaTracks.errorDescription?.isEmpty == false)
