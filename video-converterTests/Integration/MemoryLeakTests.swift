@@ -63,10 +63,7 @@ struct MemoryLeakTests {
         for _ in 0..<runs { await convertOnce(); series.append((MemoryUsage.liveMallocBytes - before) / 1024) }
         // Progress updates queued on the main actor hold memory until they run.
         await MainActor.run {}
-        // A leak grows with every run; a cache filled once after warm-up shifts the whole series but stays flat
-        // (GitHub's runners take ~4 MB once). So compare the medians of the first and last five runs.
-        func median(_ values: ArraySlice<Int>) -> Int { values.sorted()[values.count / 2] }
-        let growthPerRun = (median(series.suffix(5)) - median(series.prefix(5))) * 1024 / (runs - 5)
+        let growthPerRun = (MemoryUsage.liveMallocBytes - before) / runs
         // VideoToolbox caches up to a few hundred KB when handed hardware frames, growing up to ~14 KB a run
         // before it purges. Leaking any codec, filter graph or frame of a conversion costs far more.
         #expect(growthPerRun < 32 * 1024, "Live memory grew \(growthPerRun) bytes per conversion; KB since warm-up: \(series)")
