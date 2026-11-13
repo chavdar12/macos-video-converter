@@ -43,7 +43,8 @@ struct ConversionTests {
         #expect(report.audio.first?.channels == 6)
     }
 
-    @Test func proResUsesTheStandardProfileAndPCMAudio() async throws {
+    @Test(.enabled(if: ProResEncoder.isAvailable, "needs a VideoToolbox ProRes encoder"))
+    func proResUsesTheStandardProfileAndPCMAudio() async throws {
         let result = try await TestConversion.run(.vp8Opus51, to: .movProRes, in: directory)
         let report = try MediaInspector.inspect(result.output)
         #expect(report.video?.codecName == "prores")
@@ -130,7 +131,7 @@ struct ConversionTests {
         let jobs: [(Fixture, OutputFormat)] = [
             (.h264MovText, .mp4HEVC), (.hevc10TwoSRT, .mp4H264), (.transportStream, .movHEVC),
             (.vp8Opus51, .m4v), (.h264MovText, .movProRes), (.hevc10TwoSRT, .mkvH264),
-        ]
+        ].filter { $0.1 != .movProRes || ProResEncoder.isAvailable }
         let directory = self.directory
         let outputs = try await withThrowingTaskGroup(of: URL.self) { group in
             for (index, job) in jobs.enumerated() {
