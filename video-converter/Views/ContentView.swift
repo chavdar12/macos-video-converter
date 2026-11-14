@@ -24,7 +24,9 @@ struct ContentView: View {
     @State private var isImporterPresented = false
     @State private var isTargetedForDrop = false
 
-    private static let subtitleTypes: [UTType] = VideoConverter.sidecarExtensions.compactMap { UTType(filenameExtension: $0) }
+    private static let subtitleTypes: [UTType] = VideoConverter.sidecarExtensions.compactMap {
+        UTType(filenameExtension: $0)
+    }
     // Formats like MKV aren't always registered as movies, so list them explicitly.
     private static let videoTypes: [UTType] = [.movie, .audiovisualContent]
         + ["mkv", "webm", "avi", "flv", "ts"].compactMap { UTType(filenameExtension: $0) } + subtitleTypes
@@ -72,7 +74,10 @@ struct ContentView: View {
                 ContentUnavailableView {
                     Label("No Videos", systemImage: "film.stack")
                 } description: {
-                    Text("Drop videos here, or click Add Videos. Drop .srt, .vtt or .ass files with the same name to add subtitles.")
+                    Text("""
+                        Drop videos here, or click Add Videos. \
+                        Drop .srt, .vtt or .ass files with the same name to add subtitles.
+                        """)
                 } actions: {
                     Button("Add Videos") { showImporter(for: .videos) }
                 }

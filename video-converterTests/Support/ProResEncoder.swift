@@ -10,7 +10,9 @@ enum ProResEncoder {
     /// runners only have the software one, so the ProRes conversions are skipped there instead of failing.
     static let isAvailable: Bool = {
         var session: VTCompressionSession?
-        let hardwareOnly = [kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: kCFBooleanTrue] as CFDictionary
+        let hardwareOnly = [
+            kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: kCFBooleanTrue
+        ] as CFDictionary
         let status = VTCompressionSessionCreate(
             allocator: nil, width: 64, height: 64, codecType: kCMVideoCodecType_AppleProRes422,
             encoderSpecification: hardwareOnly, imageBufferAttributes: nil, compressedDataAllocator: nil,

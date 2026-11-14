@@ -21,11 +21,15 @@ struct OutputFormatTests {
     static let videoFormats = [
         VideoFormat(format: .mp4H264, fileExtension: "mp4", muxer: "mp4", codec: "h264", encoder: "h264_videotoolbox"),
         VideoFormat(format: .mp4HEVC, fileExtension: "mp4", muxer: "mp4", codec: "hevc", encoder: "hevc_videotoolbox"),
-        VideoFormat(format: .mkvH264, fileExtension: "mkv", muxer: "matroska", codec: "h264", encoder: "h264_videotoolbox"),
+        VideoFormat(
+            format: .mkvH264, fileExtension: "mkv", muxer: "matroska", codec: "h264", encoder: "h264_videotoolbox"
+        ),
         VideoFormat(format: .movH264, fileExtension: "mov", muxer: "mov", codec: "h264", encoder: "h264_videotoolbox"),
         VideoFormat(format: .movHEVC, fileExtension: "mov", muxer: "mov", codec: "hevc", encoder: "hevc_videotoolbox"),
-        VideoFormat(format: .movProRes, fileExtension: "mov", muxer: "mov", codec: "prores", encoder: "prores_videotoolbox"),
-        VideoFormat(format: .m4v, fileExtension: "m4v", muxer: "ipod", codec: "h264", encoder: "h264_videotoolbox"),
+        VideoFormat(
+            format: .movProRes, fileExtension: "mov", muxer: "mov", codec: "prores", encoder: "prores_videotoolbox"
+        ),
+        VideoFormat(format: .m4v, fileExtension: "m4v", muxer: "ipod", codec: "h264", encoder: "h264_videotoolbox")
     ]
 
     @Test("Video formats map to the right container and encoder", arguments: videoFormats)

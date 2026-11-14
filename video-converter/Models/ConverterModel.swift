@@ -133,7 +133,8 @@ final class ConverterModel {
         let ext = format.fileExtension
         var candidate = folder.appending(path: "\(item.baseName).\(ext)")
         var counter = 1
-        while reserved.contains(candidate) || FileManager.default.fileExists(atPath: candidate.path(percentEncoded: false)) {
+        while reserved.contains(candidate)
+                || FileManager.default.fileExists(atPath: candidate.path(percentEncoded: false)) {
             candidate = folder.appending(path: "\(item.baseName) (\(counter)).\(ext)")
             counter += 1
         }

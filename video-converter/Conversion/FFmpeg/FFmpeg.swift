@@ -35,7 +35,7 @@ nonisolated enum FFmpeg {
     }
 
     static func string(_ buffer: [CChar]) -> String {
-        String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
+        String(bytes: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, encoding: .utf8) ?? ""
     }
 
     static func string(_ cString: UnsafePointer<CChar>?) -> String {
@@ -61,7 +61,10 @@ nonisolated enum FFmpeg {
         avformat_close_input(&context)
     }
 
-    static func stream(_ context: UnsafeMutablePointer<AVFormatContext>, _ index: Int) -> UnsafeMutablePointer<AVStream> {
+    static func stream(
+        _ context: UnsafeMutablePointer<AVFormatContext>,
+        _ index: Int
+    ) -> UnsafeMutablePointer<AVStream> {
         context.pointee.streams[index]!
     }
 
@@ -147,7 +150,10 @@ nonisolated enum FFmpeg {
               let context = avfilter_graph_alloc_filter(graph, filter, "\(name)\(graph.pointee.nb_filters)")
         else { throw ConversionError.ffmpegFailed("The \(name) filter isn't available.") }
         for (key, value) in options {
-            try check(av_opt_set(context, key, value, AV_OPT_SEARCH_CHILDREN), "Couldn't set the \(name) filter's \(key)")
+            try check(
+                av_opt_set(context, key, value, AV_OPT_SEARCH_CHILDREN),
+                "Couldn't set the \(name) filter's \(key)"
+            )
         }
         try check(avfilter_init_str(context, nil), "Couldn't set up the \(name) filter")
         return context

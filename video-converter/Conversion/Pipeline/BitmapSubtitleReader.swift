@@ -57,7 +57,9 @@ nonisolated final class BitmapSubtitleReader: PacketHandler {
             rects.append(BitmapSubtitle.Rect(
                 x: Int(rect.x), y: Int(rect.y), width: Int(rect.w), height: Int(rect.h), linesize: linesize,
                 pixels: Array(UnsafeBufferPointer(start: pixels, count: linesize * Int(rect.h))),
-                palette: (0..<Int(rect.nb_colors)).map { UnsafeRawPointer(palette).loadUnaligned(fromByteOffset: $0 * 4, as: UInt32.self) }
+                palette: (0..<Int(rect.nb_colors)).map {
+                    UnsafeRawPointer(palette).loadUnaligned(fromByteOffset: $0 * 4, as: UInt32.self)
+                }
             ))
         }
         video.addSubtitle(BitmapSubtitle(

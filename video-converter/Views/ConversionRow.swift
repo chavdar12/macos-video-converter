@@ -66,7 +66,9 @@ struct ConversionRow: View {
                 .foregroundStyle(.tint)
         } else if item.embeddedSubtitleTracks > 0 {
             Label(
-                item.embeddedSubtitleTracks == 1 ? "1 embedded subtitle track" : "\(item.embeddedSubtitleTracks) embedded subtitle tracks",
+                item.embeddedSubtitleTracks == 1
+                    ? "1 embedded subtitle track"
+                    : "\(item.embeddedSubtitleTracks) embedded subtitle tracks",
                 systemImage: "captions.bubble"
             )
             .font(.caption)

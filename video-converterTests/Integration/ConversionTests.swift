@@ -23,7 +23,10 @@ struct ConversionTests {
         #expect(report.audio.map(\.codecName) == ["aac"])
         #expect(abs(report.duration - 2) < 0.1)
         // A copied stream is byte-for-byte the same.
-        #expect(try MediaInspector.videoPayloadSize(of: result.output) == MediaInspector.videoPayloadSize(of: Fixture.h264MovText.url))
+        #expect(
+            try MediaInspector.videoPayloadSize(of: result.output)
+                == MediaInspector.videoPayloadSize(of: Fixture.h264MovText.url)
+        )
     }
 
     @Test func reencodesToHEVCWithTheAppleTag() async throws {
@@ -65,7 +68,9 @@ struct ConversionTests {
     func interlacedVideoIsDeinterlaced(_ mode: SubtitleMode) async throws {
         let source = try Fixture.interlaced.url
         #expect(try MediaInspector.combing(in: source, at: 1) > 1.5, "The fixture should show combing")
-        let result = try await TestConversion.run(.interlaced, sidecar: .sidecar, to: .mp4HEVC, subtitles: mode, in: directory)
+        let result = try await TestConversion.run(
+            .interlaced, sidecar: .sidecar, to: .mp4HEVC, subtitles: mode, in: directory
+        )
         let combing = try MediaInspector.combing(in: result.output, at: 1)
         #expect(combing < 1.1)
         #expect(abs(try MediaInspector.inspect(result.output).duration - 2) < 0.1)
@@ -80,7 +85,7 @@ struct ConversionTests {
 
     @Test("Audio that doesn't fit MP4 becomes AAC with the same layout", arguments: [
         AudioCase(fixture: .transportStream, sampleRate: 44_100, channels: 1),
-        AudioCase(fixture: .vp8Opus51, sampleRate: 48_000, channels: 6),
+        AudioCase(fixture: .vp8Opus51, sampleRate: 48_000, channels: 6)
     ])
     func audioIsReencodedToAAC(_ audio: AudioCase) async throws {
         let result = try await TestConversion.run(audio.fixture, to: .mp4H264, in: directory)
@@ -130,7 +135,7 @@ struct ConversionTests {
     @Test func runsManyConversionsAtOnce() async throws {
         let jobs: [(Fixture, OutputFormat)] = [
             (.h264MovText, .mp4HEVC), (.hevc10TwoSRT, .mp4H264), (.transportStream, .movHEVC),
-            (.vp8Opus51, .m4v), (.h264MovText, .movProRes), (.hevc10TwoSRT, .mkvH264),
+            (.vp8Opus51, .m4v), (.h264MovText, .movProRes), (.hevc10TwoSRT, .mkvH264)
         ].filter { $0.1 != .movProRes || ProResEncoder.isAvailable }
         let directory = self.directory
         let outputs = try await withThrowingTaskGroup(of: URL.self) { group in

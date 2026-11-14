@@ -26,7 +26,7 @@ struct ConverterModelTests {
             directory.file("Other.mkv"),
             directory.file("Other Cut.mkv"),
             directory.file("Other Cut.vtt"),
-            directory.file("Unrelated.ass"),
+            directory.file("Unrelated.ass")
         ])
         let byName = Dictionary(uniqueKeysWithValues: model.items.map { ($0.name, $0) })
         #expect(model.items.map(\.name) == ["Movie.mp4", "Other.mkv", "Other Cut.mkv"])
@@ -94,7 +94,9 @@ struct ConverterModelTests {
         let next = model.uniqueOutputURL(for: item, in: directory.url, excluding: [])
         #expect(next.lastPathComponent == "Movie (1).mp4")
         // Names already handed out in this run count too, even before the file exists.
-        #expect(model.uniqueOutputURL(for: item, in: directory.url, excluding: [next]).lastPathComponent == "Movie (2).mp4")
+        #expect(
+            model.uniqueOutputURL(for: item, in: directory.url, excluding: [next]).lastPathComponent == "Movie (2).mp4"
+        )
 
         model.format = .m4a
         #expect(model.uniqueOutputURL(for: item, in: directory.url, excluding: []).lastPathComponent == "Movie.m4a")

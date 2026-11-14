@@ -40,7 +40,7 @@ struct MediaInfoTests {
     }
 
     @Test(arguments: [
-        (Fixture.h264MovText, 1), (.hevc10TwoSRT, 2), (.transportStream, 0), (.vp8Opus51, 0), (.notMedia, 0),
+        (Fixture.h264MovText, 1), (.hevc10TwoSRT, 2), (.transportStream, 0), (.vp8Opus51, 0), (.notMedia, 0)
     ])
     func countsEmbeddedSubtitleTracks(_ fixture: Fixture, expected: Int) async throws {
         #expect(await VideoConverter.embeddedSubtitleTrackCount(in: try fixture.url) == expected)
