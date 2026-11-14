@@ -37,6 +37,12 @@ jobs:
             runner: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Resolve Swift packages before CodeQL starts tracing: SwiftPM's sandboxed resolver fails
+      # under the tracer ("Bad CPU type in executable").
+      - if: matrix.language == 'swift'
+        run: |
+          xcodebuild -resolvePackageDependencies -project video-converter.xcodeproj -scheme video-converter \
+            -clonedSourcePackagesDirPath build/SourcePackages
       - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: ${{ matrix.language }}
@@ -47,6 +53,7 @@ jobs:
         run: |
           xcodebuild build -project video-converter.xcodeproj -scheme video-converter -configuration Debug \
             -destination 'generic/platform=macOS' -derivedDataPath build/CodeQL \
+            -clonedSourcePackagesDirPath build/SourcePackages -disableAutomaticPackageResolution \
             CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
