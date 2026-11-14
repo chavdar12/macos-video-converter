@@ -7,13 +7,13 @@ on:
   pull_request:
 
 permissions:
-  contents: write # gh release create
+  contents: read
 
 jobs:
   test:
     runs-on: xcode-27
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # shortcut: UI tests need a logged-in GUI session and hang on headless runners; run them locally, re-enable on a GUI runner.
       # The memory leak suite runs locally only: on virtual runners live memory jumps by megabytes between
       # conversions, far more than the 32 KB per run it checks for.
@@ -22,7 +22,7 @@ jobs:
           xcodebuild test -project video-converter.xcodeproj -scheme video-converter \
             -destination 'platform=macOS' -skip-testing:video-converterUITests -skip-testing:video-converterTests/MemoryLeakTests -derivedDataPath build/DerivedData -resultBundlePath build/Tests.xcresult \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=""
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: test-results
@@ -31,8 +31,10 @@ jobs:
   dmg:
     needs: test
     runs-on: xcode-27
+    permissions:
+      contents: write # gh release create
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build DMG
         run: |
           [[ "$GITHUB_REF" == refs/tags/v* ]] && version_arg="MARKETING_VERSION=${GITHUB_REF_NAME#v}"
@@ -54,7 +56,7 @@ jobs:
           codesign --verify --deep --strict "$mnt/video-converter.app"
           test -L "$mnt/Applications"
           hdiutil detach "$mnt"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dmg
           path: build/*.dmg
