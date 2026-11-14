@@ -49,11 +49,14 @@ jobs:
           build-mode: ${{ matrix.build-mode }}
           queries: security-and-quality
       # CodeQL only sees the Swift it watches being compiled, so this is a clean build with no cached products.
+      # Manifest loading also runs under sandbox-exec, which fails under the tracer the same way; the
+      # manifests were already evaluated (sandboxed) by the resolve step above.
       - if: matrix.build-mode == 'manual'
         run: |
           xcodebuild build -project video-converter.xcodeproj -scheme video-converter -configuration Debug \
             -destination 'generic/platform=macOS' -derivedDataPath build/CodeQL \
             -clonedSourcePackagesDirPath build/SourcePackages -disableAutomaticPackageResolution \
+            -IDEPackageSupportDisableManifestSandbox=YES \
             CODE_SIGNING_ALLOWED=NO COMPILER_INDEX_STORE_ENABLE=NO
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
