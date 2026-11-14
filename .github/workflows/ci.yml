@@ -13,7 +13,7 @@ jobs:
   test:
     runs-on: xcode-27
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # shortcut: UI tests need a logged-in GUI session and hang on headless runners; run them locally, re-enable on a GUI runner.
       # The memory leak suite runs locally only: on virtual runners live memory jumps by megabytes between
       # conversions, far more than the 32 KB per run it checks for.
@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: write # gh release create
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build DMG
         run: |
           [[ "$GITHUB_REF" == refs/tags/v* ]] && version_arg="MARKETING_VERSION=${GITHUB_REF_NAME#v}"
