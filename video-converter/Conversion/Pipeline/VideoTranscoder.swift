@@ -76,7 +76,9 @@ nonisolated final class VideoTranscoder: OutputHandler {
         }
         let parameters = stream.pointee.codecpar.pointee
         deinterlace = parameters.field_order != AV_FIELD_PROGRESSIVE && parameters.field_order != AV_FIELD_UNKNOWN
-        if let matrix = av_packet_side_data_get(parameters.coded_side_data, parameters.nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX) {
+        if let matrix = av_packet_side_data_get(
+            parameters.coded_side_data, parameters.nb_coded_side_data, AV_PKT_DATA_DISPLAYMATRIX
+        ) {
             displayMatrix = Array(UnsafeBufferPointer(start: matrix.pointee.data, count: matrix.pointee.size))
         } else {
             displayMatrix = nil
@@ -151,7 +153,8 @@ nonisolated final class VideoTranscoder: OutputHandler {
         // can't switch paths: the encoder is already set up for one or the other.
         if encoder == nil, graph == nil, frame.pointee.flags & AV_FRAME_FLAG_INTERLACED != 0 { deinterlace = true }
         if case .off = burnIn, !deinterlace, isHardwareFrame, graph == nil {
-            // Nothing to draw: the frame goes straight from the decoder to the encoder without leaving the media engine.
+            // Nothing to draw: the frame goes straight from the decoder to the encoder
+            // without leaving the media engine.
             try encode(frame, timeBase: timeBase, startsAtZero: false)
             return
         }
@@ -193,7 +196,9 @@ nonisolated final class VideoTranscoder: OutputHandler {
         if deinterlace {
             // Before the subtitles so they stay sharp. One frame per frame keeps the source's frame rate;
             // `interlaced` leaves frames flagged progressive untouched.
-            let bwdif = try FFmpeg.addFilter("bwdif", to: graph, options: [("mode", "send_frame"), ("deint", "interlaced")])
+            let bwdif = try FFmpeg.addFilter(
+                "bwdif", to: graph, options: [("mode", "send_frame"), ("deint", "interlaced")]
+            )
             try FFmpeg.link(last, to: bwdif)
             last = bwdif
         }
@@ -209,7 +214,7 @@ nonisolated final class VideoTranscoder: OutputHandler {
             last = subtitles
         case .bitmap:
             canvasSize = (frame.pointee.width, frame.pointee.height)
-            blankCanvas = try makeCanvas()
+            blankCanvas = try SubtitleCanvas.make(size: canvasSize)
             let subtitleSource = try FFmpeg.addSource(to: graph) { parameters in
                 parameters.pointee.format = AV_PIX_FMT_YUVA420P.rawValue
                 parameters.pointee.width = canvasSize.width
@@ -228,7 +233,9 @@ nonisolated final class VideoTranscoder: OutputHandler {
             .filter { $0 != AV_PIX_FMT_VIDEOTOOLBOX }
             .compactMap { av_get_pix_fmt_name($0).map { String(cString: $0) } }
         if !pixelFormats.isEmpty {
-            let convert = try FFmpeg.addFilter("format", to: graph, options: [("pix_fmts", pixelFormats.joined(separator: "|"))])
+            let convert = try FFmpeg.addFilter(
+                "format", to: graph, options: [("pix_fmts", pixelFormats.joined(separator: "|"))]
+            )
             try FFmpeg.link(last, to: convert)
             last = convert
         }
@@ -249,6 +256,31 @@ nonisolated final class VideoTranscoder: OutputHandler {
 
     // MARK: Encoding
 
+    /// The overlay filter needs a subtitle picture for every video frame to stay in sync,
+    /// so the current one (or a transparent one) is pushed with each frame's timestamp.
+    private func pushSubtitleCanvas(to subtitleSource: UnsafeMutablePointer<AVFilterContext>, at pts: Int64) throws {
+        let time = av_rescale_q(pts, timeBase, FFmpeg.microseconds)
+        while let next = pendingSubtitles.first, next.start <= time {
+            pendingSubtitles.removeFirst()
+            FFmpeg.freeFrame(activeSubtitle?.canvas)
+            activeSubtitle = next.rects.isEmpty ? nil : (try SubtitleCanvas.render(next, size: canvasSize), next.end)
+        }
+        if let end = activeSubtitle?.end, time >= end {
+            FFmpeg.freeFrame(activeSubtitle?.canvas)
+            activeSubtitle = nil
+        }
+        guard let canvas = activeSubtitle?.canvas ?? blankCanvas else { return }
+        canvas.pointee.pts = pts
+        try FFmpeg.check(
+            av_buffersrc_add_frame_flags(subtitleSource, canvas, Int32(AV_BUFFERSRC_FLAG_KEEP_REF)),
+            "Couldn't draw the subtitles"
+        )
+    }
+}
+
+// MARK: - Encoding
+
+nonisolated extension VideoTranscoder {
     private func encode(_ frame: UnsafeMutablePointer<AVFrame>, timeBase: AVRational, startsAtZero: Bool) throws {
         if encoder == nil {
             try openEncoder(for: frame, timeBase: timeBase)
@@ -269,13 +301,18 @@ nonisolated final class VideoTranscoder: OutputHandler {
     private func receivePackets() throws {
         guard let encoder else { return }
         while avcodec_receive_packet(encoder, packet) >= 0 {
-            try muxer.write(packet, timeBase: encoder.pointee.time_base, stream: output.pointee.index, startsAtZero: encodedStartsAtZero)
+            try muxer.write(
+                packet, timeBase: encoder.pointee.time_base,
+                stream: output.pointee.index, startsAtZero: encodedStartsAtZero
+            )
         }
     }
 
     /// Opens the encoder once the first frame shows the picture's real size and format.
     private func openEncoder(for frame: UnsafeMutablePointer<AVFrame>, timeBase: AVRational) throws {
-        guard let encoder = avcodec_alloc_context3(encoderCodec) else { throw ConversionError.ffmpegFailed("Out of memory.") }
+        guard let encoder = avcodec_alloc_context3(encoderCodec) else {
+            throw ConversionError.ffmpegFailed("Out of memory.")
+        }
         self.encoder = encoder
         encoder.pointee.width = frame.pointee.width
         encoder.pointee.height = frame.pointee.height
@@ -314,7 +351,9 @@ nonisolated final class VideoTranscoder: OutputHandler {
                &parameters.pointee.coded_side_data, &parameters.pointee.nb_coded_side_data,
                AV_PKT_DATA_DISPLAYMATRIX, displayMatrix.count, 0
            ) {
-            displayMatrix.withUnsafeBytes { data.pointee.data.update(from: $0.bindMemory(to: UInt8.self).baseAddress!, count: $0.count) }
+            displayMatrix.withUnsafeBytes {
+                data.pointee.data.update(from: $0.bindMemory(to: UInt8.self).baseAddress!, count: $0.count)
+            }
         }
         output.pointee.time_base = timeBase
         output.pointee.avg_frame_rate = frameRate
@@ -322,87 +361,6 @@ nonisolated final class VideoTranscoder: OutputHandler {
     }
 
     // MARK: Bitmap subtitles
-
-    /// The overlay filter needs a subtitle picture for every video frame to stay in sync,
-    /// so the current one (or a transparent one) is pushed with each frame's timestamp.
-    private func pushSubtitleCanvas(to subtitleSource: UnsafeMutablePointer<AVFilterContext>, at pts: Int64) throws {
-        let time = av_rescale_q(pts, timeBase, FFmpeg.microseconds)
-        while let next = pendingSubtitles.first, next.start <= time {
-            pendingSubtitles.removeFirst()
-            FFmpeg.freeFrame(activeSubtitle?.canvas)
-            activeSubtitle = next.rects.isEmpty ? nil : (try render(next), next.end)
-        }
-        if let end = activeSubtitle?.end, time >= end {
-            FFmpeg.freeFrame(activeSubtitle?.canvas)
-            activeSubtitle = nil
-        }
-        guard let canvas = activeSubtitle?.canvas ?? blankCanvas else { return }
-        canvas.pointee.pts = pts
-        try FFmpeg.check(
-            av_buffersrc_add_frame_flags(subtitleSource, canvas, Int32(AV_BUFFERSRC_FLAG_KEEP_REF)),
-            "Couldn't draw the subtitles"
-        )
-    }
-
-    /// A transparent YUVA 4:2:0 picture the size of the video.
-    private func makeCanvas() throws -> UnsafeMutablePointer<AVFrame> {
-        let canvas = try FFmpeg.makeFrame()
-        canvas.pointee.format = AV_PIX_FMT_YUVA420P.rawValue
-        canvas.pointee.width = canvasSize.width
-        canvas.pointee.height = canvasSize.height
-        try FFmpeg.check(av_frame_get_buffer(canvas, 0), "Couldn't draw the subtitles")
-        let height = Int(canvasSize.height)
-        let chromaHeight = (height + 1) / 2
-        let planes = [
-            (canvas.pointee.data.0, canvas.pointee.linesize.0, height, Int32(16)),
-            (canvas.pointee.data.1, canvas.pointee.linesize.1, chromaHeight, Int32(128)),
-            (canvas.pointee.data.2, canvas.pointee.linesize.2, chromaHeight, Int32(128)),
-            (canvas.pointee.data.3, canvas.pointee.linesize.3, height, Int32(0)),
-        ]
-        for (data, linesize, rows, value) in planes {
-            if let data { memset(data, value, Int(linesize) * rows) }
-        }
-        return canvas
-    }
-
-    private func render(_ subtitle: BitmapSubtitle) throws -> UnsafeMutablePointer<AVFrame> {
-        let canvas = try makeCanvas()
-        guard let lumaPlane = canvas.pointee.data.0, let uPlane = canvas.pointee.data.1,
-              let vPlane = canvas.pointee.data.2, let alphaPlane = canvas.pointee.data.3
-        else { return canvas }
-        let lumaStride = Int(canvas.pointee.linesize.0), chromaStride = Int(canvas.pointee.linesize.1)
-        let alphaStride = Int(canvas.pointee.linesize.3)
-        let width = Int(canvasSize.width), height = Int(canvasSize.height)
-
-        for rect in subtitle.rects {
-            let colors = rect.palette.map(Self.yuva)
-            for row in 0..<rect.height {
-                let y = rect.y + row
-                guard y >= 0, y < height else { continue }
-                for column in 0..<rect.width {
-                    let x = rect.x + column
-                    guard x >= 0, x < width else { continue }
-                    let index = Int(rect.pixels[row * rect.linesize + column])
-                    guard index < colors.count, colors[index].a > 0 else { continue }
-                    let color = colors[index]
-                    lumaPlane[y * lumaStride + x] = color.y
-                    alphaPlane[y * alphaStride + x] = color.a
-                    uPlane[(y / 2) * chromaStride + x / 2] = color.u
-                    vPlane[(y / 2) * chromaStride + x / 2] = color.v
-                }
-            }
-        }
-        return canvas
-    }
-
-    /// Converts a palette entry (0xAARRGGBB) to limited-range BT.601 YUV plus alpha.
-    private static func yuva(_ argb: UInt32) -> (y: UInt8, u: UInt8, v: UInt8, a: UInt8) {
-        let a = Int(argb >> 24 & 0xFF), r = Int(argb >> 16 & 0xFF), g = Int(argb >> 8 & 0xFF), b = Int(argb & 0xFF)
-        let y = ((66 * r + 129 * g + 25 * b + 128) >> 8) + 16
-        let u = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128
-        let v = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128
-        return (UInt8(clamping: y), UInt8(clamping: u), UInt8(clamping: v), UInt8(a))
-    }
 }
 
 /// Picks VideoToolbox decoding when FFmpeg offers it for the stream.

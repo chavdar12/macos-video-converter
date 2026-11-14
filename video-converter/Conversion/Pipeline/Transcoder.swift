@@ -110,7 +110,9 @@ nonisolated final class Transcoder {
         let burnIn = burnInPlan(info: info, sidecar: sidecar)
         // Fastest path: the source is already in the target codec and nothing is drawn on it.
         if case .off = burnIn, video.codecName == format.videoCodec {
-            let copier = try StreamCopier(stream: stream, muxer: muxer, codecTag: format.usesHVC1Tag ? FFmpeg.hvc1Tag : 0)
+            let copier = try StreamCopier(
+                stream: stream, muxer: muxer, codecTag: format.usesHVC1Tag ? FFmpeg.hvc1Tag : 0
+            )
             handlers[video.index] = copier
             muxer.progressStream = copier.output.pointee.index
             return
@@ -155,11 +157,15 @@ nonisolated final class Transcoder {
     private func addSubtitleTracks(info: MediaInfo, sidecar: URL?, muxer: Muxer) throws {
         var outputs: [UnsafeMutablePointer<AVStream>] = []
         if let sidecar {
-            let unreadable = ConversionError.ffmpegFailed("The subtitle file \(sidecar.lastPathComponent) couldn't be read.")
+            let unreadable = ConversionError.ffmpegFailed(
+                "The subtitle file \(sidecar.lastPathComponent) couldn't be read."
+            )
             guard let sidecarInput = try? FFmpeg.openInput(sidecar) else { throw unreadable }
             self.sidecarInput = sidecarInput
             // Every packet in the file goes to this one handler, so it must hold a single subtitle stream.
-            guard sidecarInput.pointee.nb_streams == 1, MediaInfo(context: sidecarInput).streams.first?.kind == .subtitle else {
+            guard sidecarInput.pointee.nb_streams == 1,
+                  MediaInfo(context: sidecarInput).streams.first?.kind == .subtitle
+            else {
                 throw unreadable
             }
             let stream = FFmpeg.stream(sidecarInput, 0)

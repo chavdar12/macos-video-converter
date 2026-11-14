@@ -14,12 +14,13 @@ nonisolated enum VideoConverter {
     /// Only errors reach the console; FFmpeg's warnings about odd files are noise here.
     private static let configureLogging: Void = av_log_set_level(AV_LOG_ERROR)
 
+    // One parameter per conversion setting, hence the function_parameter_count exception.
     /// Converts `source` into `outputURL`.
     /// - Parameters:
     ///   - subtitleFile: An optional sidecar subtitle file, used instead of embedded subtitles
     ///     when burning in, or added as the first (default) track when keeping tracks.
     ///   - progress: Called on the main actor with values in `0...1`.
-    static func convert(
+    static func convert( // swiftlint:disable:this function_parameter_count
         source: URL,
         subtitleFile: URL?,
         to outputURL: URL,

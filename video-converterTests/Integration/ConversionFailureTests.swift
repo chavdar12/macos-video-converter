@@ -32,7 +32,9 @@ struct ConversionFailureTests {
     @Test(arguments: [Fixture.audioOnly, .notMedia])
     func sidecarThatIsNotSubtitlesIsRejected(sidecar: Fixture) async throws {
         let error = await #expect(throws: ConversionError.self) {
-            try await TestConversion.run(.h264MovText, sidecar: sidecar, to: .mkvH264, subtitles: .keepTrack, in: directory)
+            try await TestConversion.run(
+                .h264MovText, sidecar: sidecar, to: .mkvH264, subtitles: .keepTrack, in: directory
+            )
         }
         #expect(error?.errorDescription?.contains("subtitle file") == true)
     }
@@ -49,7 +51,9 @@ struct ConversionFailureTests {
         let task = Task {
             // Cancel before converting so the outcome doesn't depend on timing.
             withUnsafeCurrentTask { $0?.cancel() }
-            try await VideoConverter.convert(source: source, subtitleFile: nil, to: output, format: .mp4H264, subtitleMode: .burnIn) { _ in }
+            try await VideoConverter.convert(
+                source: source, subtitleFile: nil, to: output, format: .mp4H264, subtitleMode: .burnIn
+            ) { _ in }
         }
         await #expect(throws: CancellationError.self) { try await task.value }
         #expect(!FileManager.default.fileExists(atPath: output.path))

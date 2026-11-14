@@ -33,9 +33,14 @@ struct MemoryLeakTests {
         Case(name: "software decode and audio re-encode", fixture: .vp8Opus51, format: .mp4H264),
         Case(name: "burn-in", fixture: .hevc10TwoSRT, format: .mp4H264, subtitles: .burnIn),
         Case(name: "deinterlace", fixture: .interlaced, format: .mp4HEVC),
-        Case(name: "subtitle tracks", fixture: .hevc10TwoSRT, sidecar: .sidecar, format: .mkvH264, subtitles: .keepTrack),
-        Case(name: "failure after setup", fixture: .h264MovText, sidecar: .notMedia, format: .mkvH264, subtitles: .keepTrack),
-        Case(name: "cancelled midway", fixture: .interlaced, format: .mp4HEVC, cancelsMidway: true),
+        Case(
+            name: "subtitle tracks", fixture: .hevc10TwoSRT, sidecar: .sidecar, format: .mkvH264, subtitles: .keepTrack
+        ),
+        Case(
+            name: "failure after setup", fixture: .h264MovText, sidecar: .notMedia,
+            format: .mkvH264, subtitles: .keepTrack
+        ),
+        Case(name: "cancelled midway", fixture: .interlaced, format: .mp4HEVC, cancelsMidway: true)
     ]
 
     @Test(arguments: cases)
@@ -46,7 +51,10 @@ struct MemoryLeakTests {
         // Calls the converter directly: test helpers that record progress add noise of their own.
         func convertOnce() async {
             let conversion = Task {
-                try await VideoConverter.convert(source: source, subtitleFile: sidecar, to: output, format: test.format, subtitleMode: test.subtitles) { _ in }
+                try await VideoConverter.convert(
+                    source: source, subtitleFile: sidecar, to: output,
+                    format: test.format, subtitleMode: test.subtitles
+                ) { _ in }
             }
             if test.cancelsMidway {
                 try? await Task.sleep(for: .milliseconds(30))
@@ -66,6 +74,9 @@ struct MemoryLeakTests {
         let growthPerRun = (MemoryUsage.liveMallocBytes - before) / runs
         // VideoToolbox caches up to a few hundred KB when handed hardware frames, growing up to ~14 KB a run
         // before it purges. Leaking any codec, filter graph or frame of a conversion costs far more.
-        #expect(growthPerRun < 32 * 1024, "Live memory grew \(growthPerRun) bytes per conversion; KB since warm-up: \(series)")
+        #expect(
+            growthPerRun < 32 * 1024,
+            "Live memory grew \(growthPerRun) bytes per conversion; KB since warm-up: \(series)"
+        )
     }
 }

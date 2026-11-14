@@ -15,12 +15,19 @@ nonisolated final class Muxer {
     let context: UnsafeMutablePointer<AVFormatContext>
     private let url: URL
     private let usesFastStart: Bool
+    private struct QueuedPacket {
+        let packet: UnsafeMutablePointer<AVPacket>
+        let timeBase: AVRational
+        let stream: Int32
+        let startsAtZero: Bool
+    }
+
     /// The source's start time in microseconds. It's subtracted so the output starts at zero, like ffmpeg does.
     private let startOffset: Int64
     private var uninitializedStreams = 0
     private var started = false
     private var headerWritten = false
-    private var queue: [(packet: UnsafeMutablePointer<AVPacket>, timeBase: AVRational, stream: Int32, startsAtZero: Bool)] = []
+    private var queue: [QueuedPacket] = []
 
     /// The output stream whose timestamps drive progress.
     var progressStream: Int32 = -1
@@ -28,9 +35,18 @@ nonisolated final class Muxer {
     private let reportProgress: (Double) -> Void
     private var reportedProgress = 0.0
 
-    init(url: URL, format: OutputFormat, startOffset: Int64, duration: Double, reportProgress: @escaping (Double) -> Void) throws {
+    init(
+        url: URL,
+        format: OutputFormat,
+        startOffset: Int64,
+        duration: Double,
+        reportProgress: @escaping (Double) -> Void
+    ) throws {
         var context: UnsafeMutablePointer<AVFormatContext>?
-        try FFmpeg.check(avformat_alloc_output_context2(&context, nil, format.muxerName, url.path), "Couldn't create the output")
+        try FFmpeg.check(
+            avformat_alloc_output_context2(&context, nil, format.muxerName, url.path),
+            "Couldn't create the output"
+        )
         guard let context else { throw ConversionError.ffmpegFailed("Couldn't create the output.") }
         self.context = context
         self.url = url
@@ -75,11 +91,16 @@ nonisolated final class Muxer {
 
     /// Takes the packet's data; `packet` is left blank.
     /// - Parameter startsAtZero: The timestamps are already relative to the start of the output.
-    func write(_ packet: UnsafeMutablePointer<AVPacket>, timeBase: AVRational, stream: Int32, startsAtZero: Bool = false) throws {
+    func write(
+        _ packet: UnsafeMutablePointer<AVPacket>,
+        timeBase: AVRational,
+        stream: Int32,
+        startsAtZero: Bool = false
+    ) throws {
         guard headerWritten else {
             let queued = try FFmpeg.makePacket()
             av_packet_move_ref(queued, packet)
-            queue.append((queued, timeBase, stream, startsAtZero))
+            queue.append(QueuedPacket(packet: queued, timeBase: timeBase, stream: stream, startsAtZero: startsAtZero))
             return
         }
         try send(packet, timeBase: timeBase, stream: stream, startsAtZero: startsAtZero)
@@ -93,7 +114,10 @@ nonisolated final class Muxer {
     private func writeHeaderIfReady() throws {
         guard started, uninitializedStreams == 0, !headerWritten else { return }
         if context.pointee.oformat.pointee.flags & AVFMT_NOFILE == 0 {
-            try FFmpeg.check(avio_open(&context.pointee.pb, url.path, AVIO_FLAG_WRITE), "Couldn't create the output file")
+            try FFmpeg.check(
+                avio_open(&context.pointee.pb, url.path, AVIO_FLAG_WRITE),
+                "Couldn't create the output file"
+            )
         }
         var options: OpaquePointer?
         defer { av_dict_free(&options) }
@@ -109,7 +133,12 @@ nonisolated final class Muxer {
         }
     }
 
-    private func send(_ packet: UnsafeMutablePointer<AVPacket>, timeBase: AVRational, stream: Int32, startsAtZero: Bool) throws {
+    private func send(
+        _ packet: UnsafeMutablePointer<AVPacket>,
+        timeBase: AVRational,
+        stream: Int32,
+        startsAtZero: Bool
+    ) throws {
         if !startsAtZero && startOffset != 0 {
             let shift = av_rescale_q(startOffset, FFmpeg.microseconds, timeBase)
             if packet.pointee.pts != FFmpeg.noTimestamp { packet.pointee.pts -= shift }

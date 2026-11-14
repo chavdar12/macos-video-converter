@@ -12,7 +12,7 @@ import Libavutil
 /// Reads back what a conversion produced, using the same FFmpeg libraries as the app.
 enum MediaInspector {
     struct Stream {
-        let kind: MediaInfo.Stream.Kind
+        let kind: MediaInfo.StreamKind
         let codecName: String
         /// The container's four-character code, e.g. `avc1` or `hvc1`; empty if none.
         let codecTag: String
@@ -52,7 +52,9 @@ enum MediaInspector {
                 codecTag: fourCharacterCode(parameters.codec_tag),
                 profile: FFmpeg.string(avcodec_profile_name(parameters.codec_id, parameters.profile)),
                 isDefault: stream.isDefault,
-                pixelFormat: stream.kind == .video ? FFmpeg.string(av_get_pix_fmt_name(AVPixelFormat(rawValue: parameters.format))) : "",
+                pixelFormat: stream.kind == .video
+                    ? FFmpeg.string(av_get_pix_fmt_name(AVPixelFormat(rawValue: parameters.format)))
+                    : "",
                 sampleRate: parameters.sample_rate,
                 channels: parameters.ch_layout.nb_channels
             )
@@ -93,7 +95,10 @@ enum MediaInspector {
         try measureFrame(in: url, at: seconds) { frame in
             guard let luma = frame.pointee.data.0,
                   av_pix_fmt_desc_get(AVPixelFormat(rawValue: frame.pointee.format))?.pointee.comp.0.depth == 8
-            else { throw InspectionError.unsupportedPixelFormat(FFmpeg.string(av_get_pix_fmt_name(AVPixelFormat(rawValue: frame.pointee.format)))) }
+            else {
+                let name = FFmpeg.string(av_get_pix_fmt_name(AVPixelFormat(rawValue: frame.pointee.format)))
+                throw InspectionError.unsupportedPixelFormat(name)
+            }
             let width = Int(frame.pointee.width), height = Int(frame.pointee.height)
             let stride = Int(frame.pointee.linesize.0)
             var adjacent = 0, sameField = 0
@@ -175,6 +180,6 @@ enum MediaInspector {
     private static func fourCharacterCode(_ tag: UInt32) -> String {
         guard tag != 0 else { return "" }
         let bytes = (0..<4).map { UInt8(truncatingIfNeeded: tag >> ($0 * 8)) }
-        return String(decoding: bytes, as: UTF8.self)
+        return String(bytes: bytes, encoding: .ascii) ?? ""
     }
 }

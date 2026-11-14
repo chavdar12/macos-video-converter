@@ -19,19 +19,27 @@ struct BundledFFmpegTests {
         #expect(av_guess_format(name, nil, nil) != nil)
     }
 
-    @Test(arguments: Set(OutputFormat.allCases.compactMap(\.videoEncoderName) + OutputFormat.allCases.map(\.audioEncoderName)) + ["mov_text", "webvtt"])
+    @Test(arguments: Set(
+        OutputFormat.allCases.compactMap(\.videoEncoderName) + OutputFormat.allCases.map(\.audioEncoderName)
+    ) + ["mov_text", "webvtt"])
     func encoderIsAvailable(_ name: String) {
         #expect(avcodec_find_encoder_by_name(name) != nil)
     }
 
     /// Codec names, as `MediaInfo` reports them; the app finds decoders by codec, not decoder name.
-    @Test(arguments: ["subrip", "ass", "webvtt", "mov_text", "hdmv_pgs_subtitle", "dvd_subtitle", "h264", "hevc", "vp8", "vp9", "av1", "opus", "ac3", "mp2"])
+    @Test(arguments: [
+        "subrip", "ass", "webvtt", "mov_text", "hdmv_pgs_subtitle", "dvd_subtitle",
+        "h264", "hevc", "vp8", "vp9", "av1", "opus", "ac3", "mp2"
+    ])
     func decoderIsAvailable(_ codec: String) throws {
         let descriptor = try #require(avcodec_descriptor_get_by_name(codec))
         #expect(avcodec_find_decoder(descriptor.pointee.id) != nil)
     }
 
-    @Test(arguments: ["buffer", "buffersink", "abuffer", "abuffersink", "subtitles", "overlay", "format", "aformat", "scale", "aresample", "bwdif"])
+    @Test(arguments: [
+        "buffer", "buffersink", "abuffer", "abuffersink", "subtitles", "overlay",
+        "format", "aformat", "scale", "aresample", "bwdif"
+    ])
     func filterIsAvailable(_ name: String) {
         #expect(avfilter_get_by_name(name) != nil)
     }

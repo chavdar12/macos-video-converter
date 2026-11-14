@@ -10,13 +10,14 @@ import Libavutil
 
 /// The streams FFmpeg finds in a file.
 nonisolated struct MediaInfo: Sendable {
+    enum StreamKind: Sendable {
+        case video, audio, subtitle, other
+    }
+
     struct Stream: Sendable {
-        enum Kind: Sendable {
-            case video, audio, subtitle, other
-        }
 
         let index: Int
-        let kind: Kind
+        let kind: StreamKind
         let codecName: String
         let isDefault: Bool
         /// Cover art shows up as a video stream too.
@@ -33,7 +34,7 @@ nonisolated struct MediaInfo: Sendable {
         streams = (0..<Int(context.pointee.nb_streams)).map { index in
             let stream = FFmpeg.stream(context, index)
             let parameters = stream.pointee.codecpar.pointee
-            let kind: Stream.Kind = switch parameters.codec_type {
+            let kind: StreamKind = switch parameters.codec_type {
             case AVMEDIA_TYPE_VIDEO: .video
             case AVMEDIA_TYPE_AUDIO: .audio
             case AVMEDIA_TYPE_SUBTITLE: .subtitle

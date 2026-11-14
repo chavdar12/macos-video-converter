@@ -15,12 +15,20 @@ nonisolated final class StreamCopier: OutputHandler {
     private let timeBase: AVRational
     private let startsAtZero: Bool
 
-    init(stream: UnsafeMutablePointer<AVStream>, muxer: Muxer, codecTag: UInt32 = 0, startsAtZero: Bool = false) throws {
+    init(
+        stream: UnsafeMutablePointer<AVStream>,
+        muxer: Muxer,
+        codecTag: UInt32 = 0,
+        startsAtZero: Bool = false
+    ) throws {
         self.muxer = muxer
         self.timeBase = stream.pointee.time_base
         self.startsAtZero = startsAtZero
         output = try muxer.addStream()
-        try FFmpeg.check(avcodec_parameters_copy(output.pointee.codecpar, stream.pointee.codecpar), "Couldn't copy a stream")
+        try FFmpeg.check(
+            avcodec_parameters_copy(output.pointee.codecpar, stream.pointee.codecpar),
+            "Couldn't copy a stream"
+        )
         // The source container's tag may not be valid in the output one; 0 lets the muxer pick.
         output.pointee.codecpar.pointee.codec_tag = codecTag
         output.pointee.time_base = stream.pointee.time_base

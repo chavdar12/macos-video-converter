@@ -19,7 +19,12 @@ nonisolated final class SubtitleTranscoder: OutputHandler {
     /// ffmpeg's limit for one encoded subtitle.
     private var buffer = [UInt8](repeating: 0, count: 1 << 20)
 
-    init(stream: UnsafeMutablePointer<AVStream>, muxer: Muxer, encoder encoderName: String, startsAtZero: Bool = false) throws {
+    init(
+        stream: UnsafeMutablePointer<AVStream>,
+        muxer: Muxer,
+        encoder encoderName: String,
+        startsAtZero: Bool = false
+    ) throws {
         self.muxer = muxer
         self.startsAtZero = startsAtZero
         packet = try FFmpeg.makePacket()
@@ -38,7 +43,10 @@ nonisolated final class SubtitleTranscoder: OutputHandler {
             encoder.pointee.subtitle_header_size = Int32(headerSize)
         }
         try FFmpeg.check(avcodec_open2(encoder, codec, nil), "Couldn't start the \(encoderName) encoder")
-        try FFmpeg.check(avcodec_parameters_from_context(output.pointee.codecpar, encoder), "Couldn't set up a subtitle stream")
+        try FFmpeg.check(
+            avcodec_parameters_from_context(output.pointee.codecpar, encoder),
+            "Couldn't set up a subtitle stream"
+        )
         output.pointee.time_base = AVRational(num: 1, den: 1000)
     }
 
@@ -68,7 +76,9 @@ nonisolated final class SubtitleTranscoder: OutputHandler {
         self.packet.pointee.pts = subtitle.pts
         self.packet.pointee.dts = subtitle.pts
         self.packet.pointee.duration = Int64(subtitle.end_display_time) * 1000
-        try muxer.write(self.packet, timeBase: FFmpeg.microseconds, stream: output.pointee.index, startsAtZero: startsAtZero)
+        try muxer.write(
+            self.packet, timeBase: FFmpeg.microseconds, stream: output.pointee.index, startsAtZero: startsAtZero
+        )
     }
 
     func finish() throws {}

@@ -33,7 +33,9 @@ nonisolated final class AudioTranscoder: OutputHandler {
         filteredFrame = try FFmpeg.makeFrame()
         packet = try FFmpeg.makePacket()
         decoder = try FFmpeg.openDecoder(for: stream)
-        guard let encoder = avcodec_alloc_context3(encoderCodec) else { throw ConversionError.ffmpegFailed("Out of memory.") }
+        guard let encoder = avcodec_alloc_context3(encoderCodec) else {
+            throw ConversionError.ffmpegFailed("Out of memory.")
+        }
         self.encoder = encoder
         output = try muxer.addStream()
 
@@ -41,7 +43,8 @@ nonisolated final class AudioTranscoder: OutputHandler {
         let sampleFormats = FFmpeg.supported(encoderCodec, AV_CODEC_CONFIG_SAMPLE_FORMAT, as: AVSampleFormat.self)
         encoder.pointee.sample_fmt = sampleFormats?.first ?? decoder.pointee.sample_fmt
         let sourceRate = decoder.pointee.sample_rate > 0 ? decoder.pointee.sample_rate : 48000
-        if let rates = FFmpeg.supported(encoderCodec, AV_CODEC_CONFIG_SAMPLE_RATE, as: Int32.self), !rates.contains(sourceRate) {
+        if let rates = FFmpeg.supported(encoderCodec, AV_CODEC_CONFIG_SAMPLE_RATE, as: Int32.self),
+           !rates.contains(sourceRate) {
             encoder.pointee.sample_rate = rates.contains(48000) ? 48000 : rates.first ?? sourceRate
         } else {
             encoder.pointee.sample_rate = sourceRate
@@ -54,7 +57,10 @@ nonisolated final class AudioTranscoder: OutputHandler {
         }
         let name = FFmpeg.string(encoderCodec.pointee.name)
         try FFmpeg.check(avcodec_open2(encoder, encoderCodec, nil), "Couldn't start the \(name) encoder")
-        try FFmpeg.check(avcodec_parameters_from_context(output.pointee.codecpar, encoder), "Couldn't set up an audio stream")
+        try FFmpeg.check(
+            avcodec_parameters_from_context(output.pointee.codecpar, encoder),
+            "Couldn't set up an audio stream"
+        )
         output.pointee.time_base = encoder.pointee.time_base
         output.pointee.disposition = stream.pointee.disposition
     }
@@ -84,7 +90,9 @@ nonisolated final class AudioTranscoder: OutputHandler {
         }
         if let supported = FFmpeg.supported(codec, AV_CODEC_CONFIG_CHANNEL_LAYOUT, as: AVChannelLayout.self) {
             func isSupported(_ layout: inout AVChannelLayout) -> Bool {
-                supported.contains { option in withUnsafePointer(to: option) { av_channel_layout_compare($0, &layout) == 0 } }
+                supported.contains { option in
+                    withUnsafePointer(to: option) { av_channel_layout_compare($0, &layout) == 0 }
+                }
             }
             if !isSupported(&layout) {
                 av_channel_layout_uninit(&layout)
@@ -149,7 +157,7 @@ nonisolated final class AudioTranscoder: OutputHandler {
         let aformat = try FFmpeg.addFilter("aformat", to: graph, options: [
             ("sample_fmts", FFmpeg.string(av_get_sample_fmt_name(encoder.pointee.sample_fmt))),
             ("sample_rates", String(encoder.pointee.sample_rate)),
-            ("channel_layouts", FFmpeg.describe(&encoder.pointee.ch_layout)),
+            ("channel_layouts", FFmpeg.describe(&encoder.pointee.ch_layout))
         ])
         let sink = try FFmpeg.addFilter("abuffersink", to: graph)
         try FFmpeg.link(source, to: aformat)
@@ -166,7 +174,9 @@ nonisolated final class AudioTranscoder: OutputHandler {
         guard let sink else { return }
         while av_buffersink_get_frame(sink, filteredFrame) >= 0 {
             defer { av_frame_unref(filteredFrame) }
-            filteredFrame.pointee.pts = av_rescale_q(filteredFrame.pointee.pts, av_buffersink_get_time_base(sink), encoder.pointee.time_base)
+            filteredFrame.pointee.pts = av_rescale_q(
+                filteredFrame.pointee.pts, av_buffersink_get_time_base(sink), encoder.pointee.time_base
+            )
             try FFmpeg.check(avcodec_send_frame(encoder, filteredFrame), "Couldn't encode the audio")
             try receivePackets()
         }

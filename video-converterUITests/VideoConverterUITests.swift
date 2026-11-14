@@ -31,7 +31,11 @@ final class VideoConverterUITests: XCTestCase {
         let picker = app.popUpButtons["formatPicker"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
         picker.click()
-        for title in ["MP4 (H.264)", "MP4 (HEVC / H.265)", "MKV (H.264)", "MOV (H.264)", "MOV (HEVC / H.265)", "MOV (ProRes 422)", "M4V (H.264)", "M4A (Audio only)"] {
+        let titles = [
+            "MP4 (H.264)", "MP4 (HEVC / H.265)", "MKV (H.264)", "MOV (H.264)",
+            "MOV (HEVC / H.265)", "MOV (ProRes 422)", "M4V (H.264)", "M4A (Audio only)"
+        ]
+        for title in titles {
             XCTAssertTrue(app.menuItems[title].exists, "Missing \(title)")
         }
         app.menuItems["MKV (H.264)"].click()
