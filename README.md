@@ -22,7 +22,22 @@ xcodebuild test -project video-converter.xcodeproj -scheme video-converter \
   -destination 'platform=macOS' -skip-testing:video-converterUITests
 ```
 
-CI builds a DMG for every push to `main` and every `v*` tag.
+CI builds a DMG artifact for every push to `main`.
+
+## Releasing
+
+Only version tags on `main` publish a GitHub release with the DMG:
+
+```sh
+git tag v1.1.0 && git push origin v1.1.0
+```
+
+Release tags are protected, so they can't be moved or deleted.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Report security problems
+privately as described in the [security policy](https://github.com/chavdar12/macos-video-converter/security/policy).
 
 ## License
 

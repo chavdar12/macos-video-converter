@@ -1,0 +1,45 @@
+name: Bug report
+description: Something converts wrongly, fails or crashes
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Drop a file into the window
+        2. Choose MP4 (HEVC) and keep subtitles
+        3. Click Convert
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Input file
+      description: Container, codecs and subtitle types if you know them (e.g. MKV, H.264, AC3, PGS subtitles). Attach a short sample if you can.
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Video Converter → About
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version and Mac
+      placeholder: macOS 15.2, M2 MacBook Air
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message or logs
+      render: text
